@@ -4,9 +4,11 @@ output: html_document
 date: "2025-10-06"
 ---
 
-```{r setup, include=FALSE}
+
+```{r}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(readr)   
 ```
 
 ## Data
@@ -31,13 +33,83 @@ dat2 <- dat %>%
                          levels = c("No migration background",
                                     "Second generation",
                                     "First generation")),
-    # Institutional trust index (mean of trust items)
-    trust_index = rowMeans(select(., trstlgl, trstplc, trstplt, trstprl, trstprt),
-                           na.rm = TRUE),
     # Binary discrimination variable
     discrim = if_else(dscrgrp == 1, 1, 0),
     gender = if_else(gndr == 1, "Male", "Female")
   )
+```
+   
+```{r}
+# Recoding variables, getting rid of missing values and looking at outliers
+# fyi cntry has no missings hence it was not recoded
+
+# Recode variables with 66 missing value, 77 refusal, 88 don't know, 99 no answer
+dat2$cntbrthc[dat2$cntbrthc %in% c(66, 77, 88, 99)] <- NA 
+dat2$fbrncntb[dat2$fbrncntb %in% c(66, 77, 88, 99)] <- NA # gibt noch 65	Alien's passport
+dat2$mbrncntb[dat2$mbrncntb %in% c(66, 77, 88, 99)] <- NA # ebd.
+
+# Recode variables: 77 refusal, 88 don't know, 99 no answer
+dat2$trstlgl[dat2$trstlgl %in% c(77, 88, 99)] <- NA
+dat2$trstplc[dat2$trstplc %in% c(77, 88, 99)] <- NA
+dat2$trstplt[dat2$trstplt %in% c(77, 88, 99)] <- NA
+dat2$trstprl[dat2$trstprl %in% c(77, 88, 99)] <- NA
+dat2$trstprt[dat2$trstprt %in% c(77, 88, 99)] <- NA
+dat2$hinctnta[dat2$hinctnta %in% c(77, 88, 99)] <- NA
+dat2$eduyrs[dat2$eduyrs %in% c(77, 88, 99)] <-  NA
+dat2$yrbrn[dat$yrbrn %in% c(7777, 8888, 9999)] <- NA
+
+# Recode variables: 7 refusal, 8 don't know, 9 no answer
+dat2$brncntr[dat2$yrbrn %in% c(7, 8, 9)] <- NA
+dat2$dscrgrp[dat2$dscrgrp %in% c(7, 8, 9)] <- NA
+dat2$gndr[dat2$gndr %in% c(9)] <- NA
+dat2$agea[dat2$agea %in% c(999)] <- NA
+
+# Outlier for variable eduyrs, yrbrn and agea
+table(dat2$eduyrs)
+median(dat2$eduyrs, na.rm = TRUE) # 12
+mean(dat2$eduyrs, na.rm = TRUE) # 12.9 <- Es gibt hier 29 Fälle mit Angabe > 30 Jahre, 2 mal 50 Jahre. Letztere Rausnehmen?
+mean(dat2$yrbrn, na.rm = TRUE) # 1965
+table(dat2$yrbrn, useNA = 'always') # <- Gibt 24 Fälle vor 1920 irgendwie sus, wie wollen wir damit umgehen?
+table(dat2$agea)
+median(dat2$agea, na.rm = TRUE) # 49
+mean(dat2$agea, na.rm = TRUE) # 49.28 
+
+# Check if recoding the variables worked
+table(dat2$fbrncntb, useNA = 'always')
+table(dat2$mbrncntb, useNA = 'always')
+table(dat2$trstlgl, useNA = 'always')
+table(dat2$trstplc, useNA = 'always')
+table(dat2$trstplt, useNA = 'always')
+table(dat2$trstprl, useNA = 'always')
+table(dat2$trstprt, useNA = 'always')
+table(dat2$hinctnta, useNA = 'always')
+table(dat2$eduyrs, useNA = 'always')
+table(dat2$yrbrn, useNA = 'always')
+table(dat2$dscrgrp, useNA = 'always')
+table(dat2$gndr, useNA = 'always')
+table(dat2$agea, useNA = 'always')
+```
+ 
+```{r}   
+# Creating two trust indexes :: political institutional trust and non-political institutional trust
+
+# political institutional trust index (mean of trust items)
+dat2 <- dat2 %>%
+  mutate(political_trust_index = round(rowMeans(select(., "trstplt", "trstprl", "trstprt"), na.rm = TRUE)))
+dat2$political_trust_index[dat2$political_trust_index == "NaN"] <- NA
+table(dat2$political_trust_index, useNA = 'always')
+
+# evtl. noch spannend aus welchen Ländern?
+
+# non political institutional trust index (mean of trust items)
+dat2 <- dat2 %>%
+  mutate(non_political_trust_index = round(rowMeans(select(., "trstlgl", "trstplc"), na.rm = TRUE)))
+dat2$non_political_trust_index[dat2$non_political_trust_index == "NaN"] <- NA
+table(dat2$non_political_trust_index, useNA = 'always')
+
+# distribution check
+summary(dat2$political_trust_index) # median 4, mean 3.875, neutral, wenn überhaupt dann leicht rechtssteil/ linksschief
+summary(dat2$non_political_trust_index) # median 6, mean 5.796, ebd.
 
 ```
 
@@ -120,4 +192,5 @@ dat2 %>%
   theme_minimal()
 
 ```
+
 
